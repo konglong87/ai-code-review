@@ -18,6 +18,9 @@ import (
 type LLMProvider interface {
 	// Chat 发送一个简单的文本 prompt，返回完整的文本回复。
 	Chat(prompt string) (string, error)
+
+	// ChatStream 发送一个简单的文本 prompt，通过通道返回流式文本回复
+	ChatStream(prompt string) (<-chan string, <-chan error)
 }
 
 // OpenAICompatibleProvider 使用 go-openai 客户端访问任意 OpenAI 兼容的后端。
@@ -53,7 +56,7 @@ func NewOpenAICompatibleProvider(baseURL, apiKey, model string) (*OpenAICompatib
 	if model == "" {
 		model = defaultModel
 	}
-
+	fmt.Println("model: ", model, "baseURL: ", baseURL, "apiKey: ", apiKey)
 	return &OpenAICompatibleProvider{
 		client: client,
 		model:  model,
@@ -98,6 +101,69 @@ func (p *OpenAICompatibleProvider) Chat(prompt string) (string, error) {
 	}
 
 	return content, nil
+}
+
+// ChatStream 调用兼容的 Chat Completions 流式接口，通过通道返回逐步生成的文本。
+func (p *OpenAICompatibleProvider) ChatStream(prompt string) (<-chan string, <-chan error) {
+	textChan := make(chan string)
+	errChan := make(chan error, 1) // 缓冲为1，确保至少能发送一个错误
+
+	go func() {
+		defer close(textChan)
+		defer close(errChan)
+
+		if p == nil || p.client == nil {
+			errChan <- errors.New("OpenAICompatibleProvider 未正确初始化：client 为空")
+			return
+		}
+
+		prompt = strings.TrimSpace(prompt)
+		if prompt == "" {
+			errChan <- errors.New("prompt 不能为空")
+			return
+		}
+
+		req := openai.ChatCompletionRequest{
+			Model:       p.model,
+			Temperature: float32(defaultTemperature),
+			Messages: []openai.ChatCompletionMessage{
+				{
+					Role:    openai.ChatMessageRoleUser,
+					Content: prompt,
+				},
+			},
+			Stream: true, // 启用流式响应
+		}
+
+		ctx := context.Background()
+		stream, err := p.client.CreateChatCompletionStream(ctx, req)
+		if err != nil {
+			errChan <- fmt.Errorf("调用 OpenAI 兼容流式接口失败: %w", err)
+			return
+		}
+		defer stream.Close()
+
+		for {
+			resp, err := stream.Recv()
+			if err != nil {
+				if err.Error() == "EOF" {
+					// 正常结束
+					return
+				}
+				errChan <- fmt.Errorf("接收流式响应失败: %w", err)
+				return
+			}
+
+			if len(resp.Choices) > 0 {
+				content := resp.Choices[0].Delta.Content
+				if content != "" {
+					textChan <- content
+				}
+			}
+		}
+	}()
+
+	return textChan, errChan
 }
 
 // NewProvider 根据配置创建一个合适的 LLMProvider 实例。
