@@ -25,11 +25,11 @@ var rootCmd = &cobra.Command{
 		level, _ := cmd.Flags().GetString("level")
 		stream, _ := cmd.Flags().GetBool("stream")
 		configPath, _ := cmd.Flags().GetString("config")
-		fmt.Println("targetBranch=======>>>: ", targetBranch)
-		fmt.Println("noOutputIfSuccess: ==?>>", noOutputIfSuccess)
-		fmt.Println("level: ==?>>", level)
-		fmt.Println("stream: ==?>>", stream)
-		fmt.Println("configPath: ==?>>", configPath)
+		fmt.Println("targetBranch===>: ", targetBranch)
+		fmt.Println("noOutputIfSuccess===>", noOutputIfSuccess)
+		fmt.Println("level===>", level)
+		fmt.Println("stream===>", stream)
+		fmt.Println("configPath===>", configPath)
 
 		// 读取配置并创建对应的 LLM Provider（支持 openai/deepseek/qwen 等）
 		var cfg *config.Config
