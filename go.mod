@@ -1,4 +1,4 @@
-module github.com/GuLuGuLuGit/review-go
+module github.com/konglong87/ai-code-review
 
 go 1.23.0
 

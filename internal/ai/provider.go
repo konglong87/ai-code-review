@@ -8,7 +8,7 @@ import (
 
 	openai "github.com/sashabaranov/go-openai"
 
-	"github.com/GuLuGuLuGit/review-go/internal/config"
+	"github.com/konglong87/ai-code-review/internal/config"
 )
 
 // LLMProvider 抽象出一个最小的 LLM 能力接口，便于在不同提供商之间切换。
@@ -156,6 +156,7 @@ func (p *OpenAICompatibleProvider) ChatStream(prompt string) (<-chan string, <-c
 
 			if len(resp.Choices) > 0 {
 				content := resp.Choices[0].Delta.Content
+				fmt.Println("[ChatStream] content=====>", content)
 				if content != "" {
 					textChan <- content
 				}

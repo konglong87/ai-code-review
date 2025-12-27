@@ -1,0 +1,12 @@
+provider: "qwen"  # 当前默认使用的提供商
+
+providers:
+  qwen:
+    api_key: "sk-99999999999999"
+    base_url: "https://dashscope.aliyuncs.com/compatible-mode/v1"
+    model: "deepseek-v3.2"
+
+  deepseek:
+    api_key: "sk-11111111111111"
+    base_url: "https://api.deepseek.com"
+    model: "deepseek-coder"

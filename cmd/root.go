@@ -6,9 +6,9 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
 
-	"github.com/GuLuGuLuGit/review-go/internal/ai"
-	"github.com/GuLuGuLuGit/review-go/internal/config"
-	"github.com/GuLuGuLuGit/review-go/internal/ui"
+	"github.com/konglong87/ai-code-review/internal/ai"
+	"github.com/konglong87/ai-code-review/internal/config"
+	"github.com/konglong87/ai-code-review/internal/ui"
 )
 
 var rootCmd = &cobra.Command{
@@ -19,8 +19,25 @@ var rootCmd = &cobra.Command{
 
 使用 'review-go config' 命令管理配置文件。`,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		// 获取命令行参数
+		targetBranch, _ := cmd.Flags().GetString("target-branch")
+		noOutputIfSuccess, _ := cmd.Flags().GetBool("no-output-if-success")
+		level, _ := cmd.Flags().GetString("level")
+		stream, _ := cmd.Flags().GetBool("stream")
+		configPath, _ := cmd.Flags().GetString("config")
+		fmt.Println("targetBranch=======>>>: ", targetBranch)
+		fmt.Println("noOutputIfSuccess: ==?>>", noOutputIfSuccess)
+		fmt.Println("level: ==?>>", level)
+		fmt.Println("stream: ==?>>", stream)
+		fmt.Println("configPath: ==?>>", configPath)
+
 		// 读取配置并创建对应的 LLM Provider（支持 openai/deepseek/qwen 等）
-		cfg, err := config.Load()
+		var cfg *config.Config
+		var err error
+
+		// 使用指定的配置文件路径
+		cfg, err = config.LoadFromFile(configPath)
+
 		if err != nil {
 			return fmt.Errorf("加载配置失败: %w", err)
 		}
@@ -31,25 +48,20 @@ var rootCmd = &cobra.Command{
 		}
 		fmt.Println("provider init success: ")
 
-		res, err := provider.Chat("你好")
-		if err != nil {
-			fmt.Println("调用 Chat 失败: ", err)
-			return fmt.Errorf("调用 Chat 失败: %w", err)
-		}
-		fmt.Println("调用 Chat 成功: ", res)
-		// 获取命令行参数
-		targetBranch, _ := cmd.Flags().GetString("target-branch")
-		noOutputIfSuccess, _ := cmd.Flags().GetBool("no-output-if-success")
-		level, _ := cmd.Flags().GetString("level")
-		fmt.Println("targetBranch=======>>>: ", targetBranch)
-		fmt.Println("noOutputIfSuccess: ==?>>", noOutputIfSuccess)
-		fmt.Println("level: ==?>>", level)
-		// 启动 Bubble Tea TUI 主界面
-		m := ui.NewModel(provider, targetBranch, noOutputIfSuccess, level)
-		p := tea.NewProgram(m, tea.WithAltScreen())
+		// 根据stream参数决定使用哪种模式
+		if stream {
+			// 使用流式输出模式，启动 Bubble Tea TUI 主界面
+			m := ui.NewModel(provider, targetBranch, noOutputIfSuccess, level)
+			p := tea.NewProgram(m, tea.WithAltScreen())
 
-		if _, err := p.Run(); err != nil {
-			return fmt.Errorf("启动 TUI 失败: %w", err)
+			if _, err := p.Run(); err != nil {
+				return fmt.Errorf("启动 TUI 失败: %w", err)
+			}
+		} else {
+			// 使用非流式输出模式，直接处理并输出结果
+			if err := ui.ProcessFilesDirectly(provider, targetBranch, level); err != nil {
+				return fmt.Errorf("处理文件失败: %w", err)
+			}
 		}
 
 		return nil
@@ -70,5 +82,11 @@ func init() {
 	rootCmd.Flags().BoolP("no-output-if-success", "s", false, "当代码审查通过时不输出任何内容")
 
 	// 添加 level 参数
-	rootCmd.Flags().StringP("level", "l", "MINOR", "过滤输出级别 (CRITICAL, MAJOR, MINOR)")
+	rootCmd.Flags().StringP("level", "l", "CRITICAL", "输出级别 (CRITICAL, MAJOR, MINOR),默认CRITICAL")
+
+	// 添加 stream 参数
+	rootCmd.Flags().BoolP("stream", "r", false, "是否使用流式输出 (默认为 false)")
+
+	// 添加 config 参数
+	rootCmd.Flags().StringP("config", "c", "./review-go.yaml", "指定配置文件路径 (默认为 ./review-go.yaml)")
 }

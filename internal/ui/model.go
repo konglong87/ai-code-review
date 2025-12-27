@@ -11,8 +11,8 @@ import (
 	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/lipgloss"
 
-	"github.com/GuLuGuLuGit/review-go/internal/ai"
-	"github.com/GuLuGuLuGit/review-go/internal/gitops"
+	"github.com/konglong87/ai-code-review/internal/ai"
+	"github.com/konglong87/ai-code-review/internal/gitops"
 )
 
 // reviewLoadedMsg 是后台审核任务完成后发送给 UI 的消息。
@@ -290,7 +290,7 @@ func processStreamMsg(file string, textChan <-chan string, errChan <-chan error)
 				file: file,
 			}
 		}
-		fmt.Println("chunk===>", chunk, "file", file)
+		fmt.Println("--chunk===>", chunk, "file", file)
 		return reviewStreamChunkMsg{
 			file:  file,
 			chunk: chunk,
@@ -307,6 +307,7 @@ func processStreamMsg(file string, textChan <-chan string, errChan <-chan error)
 			err:  fmt.Errorf("流式审查失败: %w", err),
 		}
 	default:
+		fmt.Println("没有新数据，返回一个继续检查的命令")
 		// 没有新数据，返回一个继续检查的命令
 		return continueStreamCheckMsg{file: file}
 	}
@@ -502,7 +503,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.streamErrChan = errChan
 
 		// 返回处理流式响应的命令
-		return m, tea.Tick(10*time.Millisecond, func(t time.Time) tea.Msg {
+		return m, tea.Tick(100*time.Millisecond, func(t time.Time) tea.Msg {
 			return processStreamMsg(f, textChan, errChan)
 		})
 
