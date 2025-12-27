@@ -25,11 +25,13 @@ var rootCmd = &cobra.Command{
 		level, _ := cmd.Flags().GetString("level")
 		stream, _ := cmd.Flags().GetBool("stream")
 		configPath, _ := cmd.Flags().GetString("config")
+		modelVersion, _ := cmd.Flags().GetString("model")
 		fmt.Println("targetBranch===>: ", targetBranch)
 		fmt.Println("noOutputIfSuccess===>", noOutputIfSuccess)
 		fmt.Println("level===>", level)
 		fmt.Println("stream===>", stream)
 		fmt.Println("configPath===>", configPath)
+		fmt.Println("modelVersion===>", modelVersion)
 
 		// 读取配置并创建对应的 LLM Provider（支持 openai/deepseek/qwen 等）
 		var cfg *config.Config
@@ -51,7 +53,16 @@ var rootCmd = &cobra.Command{
 		// 根据stream参数决定使用哪种模式
 		if stream {
 			// 使用流式输出模式，启动 Bubble Tea TUI 主界面
-			m := ui.NewModel(provider, targetBranch, noOutputIfSuccess, level)
+			var m tea.Model
+
+			// 根据modelVersion参数选择使用哪个Model
+			switch modelVersion {
+			case "v2":
+				m = ui.NewModelV2(provider, targetBranch, noOutputIfSuccess, level)
+			default:
+				m = ui.NewModel(provider, targetBranch, noOutputIfSuccess, level)
+			}
+
 			p := tea.NewProgram(m, tea.WithAltScreen())
 
 			if _, err := p.Run(); err != nil {
@@ -89,4 +100,7 @@ func init() {
 
 	// 添加 config 参数
 	rootCmd.Flags().StringP("config", "c", "./review-go.yaml", "指定配置文件路径 (默认为 ./review-go.yaml)")
+
+	// 添加 model 参数
+	rootCmd.Flags().StringP("model", "m", "v2", "选择使用的 Model 版本 (v1 或 v2, 默认为 v1)")
 }

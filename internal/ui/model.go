@@ -126,12 +126,12 @@ var (
 // NewModel 创建一个带有初始 loading 状态和 Spinner 的 Model。
 // 通过依赖注入的方式传入一个实现了 LLMProvider 接口的实例，
 // 方便后续在不同 AI 提供商之间切换。
-func NewModel(provider ai.LLMProvider, targetBranch string, noOutputIfSuccess bool, level string) Model {
+func NewModel(provider ai.LLMProvider, targetBranch string, noOutputIfSuccess bool, level string) tea.Model {
 	s := spinner.New()
 	s.Spinner = spinner.Dot
 	s.Style = spinnerStyle
 
-	return Model{
+	return &Model{
 		files:             nil,
 		reviews:           make(map[string]string),
 		loading:           true,
@@ -147,7 +147,7 @@ func NewModel(provider ai.LLMProvider, targetBranch string, noOutputIfSuccess bo
 // Init 在程序启动时被调用，这里启动：
 // 1. spinner 的 Tick
 // 2. 后台 Git + AI 审核任务
-func (m Model) Init() tea.Cmd {
+func (m *Model) Init() tea.Cmd {
 	return tea.Batch(
 		m.spinner.Tick,
 		loadReviewsCmd(m.provider, m.targetBranch, m.level),
@@ -378,7 +378,7 @@ func getFileStagedDiff(file string) (string, error) {
 }
 
 // Update 处理所有消息（键盘事件、窗口大小变化、后台任务结果等）。
-func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
@@ -578,19 +578,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 // View 根据当前状态渲染 TUI。
-func (m Model) View() string {
+func (m *Model) View() string {
+	clearScreen := "\033[H\033[2J"
 	if m.loading {
-		return m.viewLoading()
+		return clearScreen + m.viewLoading()
 	}
 
 	if m.err != nil {
-		return m.viewError()
+		return clearScreen + m.viewError()
 	}
 
-	return m.viewContent()
+	return clearScreen + m.viewContent()
 }
 
-func (m Model) viewLoading() string {
+func (m *Model) viewLoading() string {
 	sp := m.spinner.View()
 	var text string
 
@@ -639,13 +640,13 @@ func (m Model) viewLoading() string {
 	return centerInTerminal(content, m.width, m.height)
 }
 
-func (m Model) viewError() string {
+func (m *Model) viewError() string {
 	msg := fmt.Sprintf("发生错误：\n\n%s\n\n按 q 退出。", m.err.Error())
 	content := errorStyle.Render(msg)
 	return centerInTerminal(content, m.width, m.height)
 }
 
-func (m Model) viewContent() string {
+func (m *Model) viewContent() string {
 	if len(m.files) == 0 {
 		if m.noOutputIfSuccess {
 			// 如果设置了 noOutputIfSuccess，且没有文件变更，静默退出
