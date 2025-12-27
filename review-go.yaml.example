@@ -1,4 +1,4 @@
-provider: "qwen"  # 当前默认使用的提供商
+provider: "qwen"  #当前默认使用的提供商
 
 providers:
   qwen:
